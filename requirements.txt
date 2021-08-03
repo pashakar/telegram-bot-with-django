@@ -4,8 +4,6 @@ certifi==2021.5.30
 charset-normalizer==2.0.3
 Command==0.1.0
 idna==3.2
-loguru==0.5.3
-pkg_resources==0.0.0
 pyTelegramBotAPI==3.8.1
 python-dotenv==0.18.0
 requests==2.26.0

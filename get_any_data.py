@@ -13,7 +13,7 @@ HEADERS = {
 }
 
 
-def get_cities(city: str):
+def get_cities(city: str) -> list or None:
     """
     Функция получения списка возможных городов
     :param city: город, введенный юзером
@@ -26,7 +26,7 @@ def get_cities(city: str):
     return cities if cities else None
 
 
-def get_destination_id(city: str):
+def get_destination_id(city: str) -> str:
     """
     Функция для получения id города
     :param city: город, в котором будет поиск
@@ -37,8 +37,8 @@ def get_destination_id(city: str):
     return destination_id
 
 
-def hotels(destination_id, page_size, sort_order, date_in, date_out,
-           distance_from_centr=None, price_min=None, price_max=None):
+def hotels(destination_id: str, page_size: str, sort_order: str, date_in, date_out,
+           distance_from_centr=None, price_min=None, price_max=None) -> list:
     """
     Функция для получения списка отелей в городе
     :param destination_id: id города
@@ -72,19 +72,16 @@ def hotels(destination_id, page_size, sort_order, date_in, date_out,
     return h
 
 
-def get_properties(el, distance):
+def get_properties(el: dict, distance: str) -> list:
     properties = [
         el.get('name'), el.get('starRating', 0), el.get('address').get('streetAddress'), distance,
     ]
-    if el.get('ratePlan'):
-        price = str(el.get('ratePlan').get('price').get('exactCurrent')) + ' руб.'
-        properties.append(price)
-    else:
-        properties.append('цена неизвестна')
+    properties.append(str(el.get('ratePlan').get('price').get('exactCurrent')) + ' руб.') if el.get(
+        'ratePlan') else 'цена неизвестна 🤫'
     return properties
 
 
-def prepare(city: str):
+def prepare(city: str) -> dict:
     """
     Функция для подготовки поиска
     :param city: город поиска
@@ -96,6 +93,3 @@ def prepare(city: str):
 
     response = requests.request("GET", url, headers=HEADERS, params=querystring)
     return response.json()
-
-
-
