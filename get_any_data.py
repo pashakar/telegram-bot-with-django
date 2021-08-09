@@ -64,9 +64,8 @@ def hotels(destination_id: str, page_size: str, sort_order: str, date_in, date_o
     h = []
     for el in data:
         distance = el.get('landmarks')[0]['distance'][:3]
-        if distance_from_centr:
-            if distance_from_centr >= float(distance.replace(',', '.')):
-                h.append(get_properties(el, distance))
+        if distance_from_centr and distance_from_centr >= float(distance.replace(',', '.')):
+            h.append(get_properties(el, distance))
         else:
             h.append(get_properties(el, distance))
     return h
@@ -88,8 +87,6 @@ def prepare(city: str) -> dict:
     :return:
     """
     url = "https://hotels4.p.rapidapi.com/locations/search"
-
     querystring = {"query": city, "locale": "ru_RU"}
-
     response = requests.request("GET", url, headers=HEADERS, params=querystring)
     return response.json()
