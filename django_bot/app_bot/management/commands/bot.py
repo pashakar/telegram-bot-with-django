@@ -1,21 +1,19 @@
+from django.core.management.base import BaseCommand
 import datetime
-import os
 
 import telebot
-from dotenv import load_dotenv
 from telebot.types import Message, CallbackQuery
+from django.conf import settings
 
-from action import get_list_cities, data_user_dict, get_hotels, STOP_MESSAGE
-from action import calendar, calendar_1_callback, calendar_2_callback
-from work_database import add_to_bd
+from ..work_database import add_to_bd
+from ..new_action import Action, calendar, calendar_1_callback, calendar_2_callback, STOP_MESSAGE
 
-load_dotenv()
-
+TOKEN = settings.TOKEN
 MAIN_COMMANDS = ['/bestdeal', '/lowprice', '/highprice']
 
 HELP_COMMANDS = ['/hello-world', '/start', '/help']
 
-bot = telebot.TeleBot(token=os.getenv('TOKEN'))
+bot = telebot.TeleBot(token=TOKEN)
 
 
 @bot.message_handler(commands=['hello-world', 'start', 'help'])
@@ -39,7 +37,6 @@ def hello_world(message: Message) -> None:
             message,
             'Введите следующие команды для получения информации: {}, {}, {}'.format(*HELP_COMMANDS)
         )
-    add_to_bd(message)
 
 
 @bot.message_handler(commands=['bestdeal', 'lowprice', 'highprice'])
@@ -47,7 +44,8 @@ def input_city(message: Message) -> None:
     city = bot.send_message(message.chat.id, 'Введите город 🏙')
     type_sort = ('DISTANCE_FROM_LANDMARK', 'PRICE', 'PRICE_HIGHEST_PRICE')
     message_to_command = {MAIN_COMMANDS[i]: name_sort for i, name_sort in enumerate(type_sort)}
-    bot.register_next_step_handler(city, get_list_cities, bot=bot,
+    add_to_bd(message)
+    bot.register_next_step_handler(city, Action(message=message, bot=bot).get_list_cities,
                                    sort_order=message_to_command[message.text])
 
 
@@ -61,8 +59,9 @@ def get_date_out(call: CallbackQuery) -> None:
     if action == 'DAY':
 
         if date > now:
-            data_user = data_user_dict[call.from_user.id]
+            data_user = Action(message=call, bot=bot).data_user
             data_user.date_in = date
+            data_user.save(update_fields=['date_in'])
             bot.send_message(
                 call.from_user.id, 'Введите дату выезда',
                 reply_markup=calendar.create_calendar(
@@ -87,14 +86,14 @@ def finish(call: CallbackQuery) -> None:
     date = calendar.calendar_query_handler(
         bot=bot, call=call, name=name, action=action, year=year, month=month, day=day
     )
-    data_user = data_user_dict[call.from_user.id]
     now = datetime.datetime.now()
+    data_user = Action(message=call, bot=bot).data_user
     if action == 'DAY':
 
-        if date > data_user.date_in:
-            data_user = data_user_dict[call.from_user.id]
+        if date.date() > data_user.date_in:
             data_user.date_out = date
-            get_hotels(call)
+            data_user.save(update_fields=['date_out'])
+            Action(call, bot).get_hotels(call)
             return
 
         bot.send_message(
@@ -117,5 +116,8 @@ def answer_to_any_messages(message: Message) -> None:
     bot.send_message(message.chat.id, f'Введите {HELP_COMMANDS[1]}')
 
 
-if __name__ == '__main__':
-    bot.polling(none_stop=True, interval=0)
+class Command(BaseCommand):
+    help = 'Запуск бота'
+
+    def handle(self, *args, **options):
+        bot.polling(none_stop=True, interval=0)

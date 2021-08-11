@@ -35,4 +35,8 @@
 ***
 
 
-Зависимости указаны в файле requirements.txt
+Зависимости указаны в файле requirements.txt.
+
+Запуск бота осуществляется по команде
+
+    python manage.py bot

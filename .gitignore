@@ -1,5 +1,5 @@
 venv
 .idea
-.env
+old/.env
 .probe
-users.db
+old
