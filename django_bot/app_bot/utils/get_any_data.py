@@ -1,8 +1,12 @@
+import logging
+
 import requests
 from bs4 import BeautifulSoup
 from django.conf import settings
 
 HEADERS = settings.HEADERS
+
+logger = logging.getLogger(__name__)
 
 
 def get_cities(city: str) -> list or None:
@@ -13,12 +17,11 @@ def get_cities(city: str) -> list or None:
     """
     data = prepare(city)
     data = data['suggestions'][0]['entities']
-
     cities = [BeautifulSoup(city['caption'], features='html.parser').getText() for city in data]
     return cities if cities else None
 
 
-def get_destination_id(city: str) -> str:
+def get_destination_id(city: str):
     """
     Функция для получения id города
     :param city: город, в котором будет поиск
@@ -30,7 +33,7 @@ def get_destination_id(city: str) -> str:
 
 
 def hotels(destination_id: str, page_size: str, sort_order: str, date_in, date_out,
-           distance_from_centr=None, price_min=None, price_max=None) -> list:
+           distance_from_centr=None, price_min=None, price_max=None) -> list or str:
     """
     Функция для получения списка отелей в городе
     :param destination_id: id города
@@ -40,17 +43,30 @@ def hotels(destination_id: str, page_size: str, sort_order: str, date_in, date_o
     :param price_min: мин-ая цена за номер
     :param price_max: макс-ая цена за номер
     :param date_out: дата выезда
-    :param page_size: количество отелей на странице, максимум 25, фактически вывод количества отелей юзеру
+    :param page_size: количество отелей на странице, максимум 25,
+     фактически вывод количества отелей юзеру
     :return: список отелей
     """
     url = "https://hotels4.p.rapidapi.com/properties/list"
 
-    querystring = {"adults1": "1", "pageNumber": "1", "destinationId": destination_id, "pageSize": page_size,
-                   "checkOut": date_out, "checkIn": date_in, "sortOrder": sort_order, "locale": "ru_RU",
-                   "currency": "RUB"}
+    querystring = {
+        "adults1": "1",
+        "pageNumber": "1",
+        "destinationId": destination_id,
+        "pageSize": page_size,
+        "checkOut": date_out,
+        "checkIn": date_in,
+        "sortOrder": sort_order,
+        "locale": "ru_RU",
+        "currency": "RUB"
+    }
+
     if price_min and price_max:
         querystring['priceMin'], querystring['priceMax'] = int(price_min), int(price_max)
     response = requests.request("GET", url, headers=HEADERS, params=querystring)
+    if response.status_code != 200:
+        logger.error(f'{response.status_code}: {response.text}')
+        return 'Извините, мне не хорошо('
     data = response.json()['data']['body']['searchResults']['results']
 
     h = []
@@ -72,7 +88,7 @@ def get_properties(el: dict, distance: str) -> list:
     return properties
 
 
-def prepare(city: str) -> dict:
+def prepare(city: str):
     """
     Функция для подготовки поиска
     :param city: город поиска
@@ -81,4 +97,7 @@ def prepare(city: str) -> dict:
     url = "https://hotels4.p.rapidapi.com/locations/search"
     querystring = {"query": city, "locale": "ru_RU"}
     response = requests.request("GET", url, headers=HEADERS, params=querystring)
+    if response.status_code != 200:
+        logger.error(f'{response.status_code}: {response.text}')
+        raise Exception
     return response.json()

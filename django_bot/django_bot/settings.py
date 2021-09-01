@@ -130,3 +130,36 @@ HEADERS = {
     'x-rapidapi-key': 'adad0773d1msh81ae16d652a424fp17ab6bjsnfd04fb6f1c19',
     'x-rapidapi-host': "hotels4.p.rapidapi.com"
 }
+
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'console': {
+            'format': '%(asctime)s %(message)s',
+            'datefmt': '%Y-%m-%d %H:%M:%S'
+        },
+        'file': {
+            'format': '%(asctime)s | %(levelname)s | %(message)s',
+        }
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'console',
+        },
+        'file': {
+            'level': 'WARNING',
+            'filename': 'debug.log',
+            'class': 'logging.FileHandler',
+            'formatter': 'file'
+        }
+    },
+    'loggers': {
+        '': {
+            'level': 'INFO',
+            'handlers': ['console', 'file']
+        }
+    }
+}

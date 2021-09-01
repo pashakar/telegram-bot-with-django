@@ -5,7 +5,7 @@ from telebot.types import Message, ReplyKeyboardMarkup, KeyboardButton, Callback
 from telebot_calendar import Calendar, CallbackData, RUSSIAN_LANGUAGE
 from telebot import TeleBot
 
-from .get_any_data import get_cities, get_destination_id, hotels
+from app_bot.utils.get_any_data import get_cities, get_destination_id, hotels
 
 calendar = Calendar(language=RUSSIAN_LANGUAGE)
 calendar_1_callback = CallbackData("calendar_1", "action", "year", "month", "day")
@@ -21,6 +21,12 @@ class Action:
         self.data_user = DataUser.objects.get(pk=message.from_user.id)
 
     def get_list_cities(self, message: Message, **kwargs) -> None:
+        """
+        Получение списка городов
+        :param message:
+        :param kwargs:
+        :return:
+        """
         self.data_user.sort_order = kwargs['sort_order']
         self.data_user.save(update_fields=['sort_order'])
         if message.text.lower() == 'стоп':
@@ -31,7 +37,9 @@ class Action:
         cities = get_cities(message.text)
         if not cities:
             msg = self.bot.reply_to(message, 'Введенный город не найден, попробуйте другой ❗️')
-            self.bot.register_next_step_handler(msg, self.get_list_cities)
+            self.bot.register_next_step_handler(
+                msg, self.get_list_cities, sort_order=kwargs['sort_order']
+            )
             return
         for el in cities:
             rmk.add(KeyboardButton(el))
@@ -39,11 +47,19 @@ class Action:
         self.bot.register_next_step_handler(city, self.get_city_by_destination_id)
 
     def get_city_by_destination_id(self, message: Message) -> None:
+        """
+        Получение конкретного города
+        :param message:
+        :return:
+        """
         if message.text.lower() == 'стоп':
             self.bot.send_message(message.chat.id, STOP_MESSAGE)
             return
         self.bot.send_message(message.chat.id, 'Секунду, всё уточню ⏳')
         self.data_user.destination_id = get_destination_id(message.text)
+        if self.data_user.destination_id is None:
+            self.bot.send_message(message.chat.id, 'что-то мне не хорошо')
+            return
         self.data_user.save(update_fields=['destination_id'])
         reply_markup = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
         for i in range(1, 11):
@@ -59,6 +75,11 @@ class Action:
         self.bot.register_next_step_handler(count_hotels, self.get_date_in)
 
     def get_date_in(self, message: Message) -> None:
+        """
+        Получение даты заезда
+        :param message:
+        :return:
+        """
         if message.text.lower() == 'стоп':
             self.bot.send_message(message.chat.id, STOP_MESSAGE)
             return
@@ -88,6 +109,11 @@ class Action:
             ))
 
     def get_hotels(self, call: CallbackQuery, ) -> None:
+        """
+        Выдача юзеру отелей
+        :param call:
+        :return:
+        """
         if self.data_user.sort_order == 'DISTANCE_FROM_LANDMARK':
             my_hotels = hotels(
                 destination_id=self.data_user.destination_id,
@@ -119,6 +145,11 @@ class Action:
             )
 
     def get_price(self, message: Message) -> None:
+        """
+        Получение диапазона цен
+        :param message:
+        :return:
+        """
         if message.text.lower() == 'стоп':
             self.bot.send_message(message.chat.id, STOP_MESSAGE)
             return
@@ -135,6 +166,11 @@ class Action:
         self.bot.register_next_step_handler(price, self.get_distance)
 
     def get_distance(self, message: Message) -> None:
+        """
+        Получение расстояния от центра
+        :param message:
+        :return:
+        """
         if message.text.lower() == 'стоп':
             self.bot.send_message(message.chat.id, STOP_MESSAGE)
             return
@@ -165,3 +201,15 @@ class Action:
         :return:
         """
         return not count_hotels.isdigit() or not 10 >= int(count_hotels) > 0
+
+
+def input_correct_date(call, bot, calendar_callback, now, date=calendar):
+    """
+    Повторное отправление календаря юзеру
+    """
+    bot.send_message(
+        call.from_user.id,
+        'Укажите корректную дату',
+        reply_markup=date.create_calendar(
+            name=calendar_callback.prefix, year=now.year, month=now.month
+        ))

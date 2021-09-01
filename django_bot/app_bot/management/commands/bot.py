@@ -5,8 +5,9 @@ import telebot
 from telebot.types import Message, CallbackQuery
 from django.conf import settings
 
-from ..work_database import add_to_bd
-from ..new_action import Action, calendar, calendar_1_callback, calendar_2_callback, STOP_MESSAGE
+from app_bot.utils.work_database import add_to_bd
+from app_bot.utils.action import Action, calendar, calendar_1_callback, calendar_2_callback, STOP_MESSAGE, \
+    input_correct_date
 
 TOKEN = settings.TOKEN
 MAIN_COMMANDS = ['/bestdeal', '/lowprice', '/highprice']
@@ -57,7 +58,6 @@ def get_date_out(call: CallbackQuery) -> None:
     )
     now = datetime.datetime.now()
     if action == 'DAY':
-
         if date > now:
             data_user = Action(message=call, bot=bot).data_user
             data_user.date_in = date
@@ -68,14 +68,9 @@ def get_date_out(call: CallbackQuery) -> None:
                     name=calendar_2_callback.prefix, year=now.year, month=now.month
                 ))
             return
-
-        bot.send_message(
-            call.from_user.id,
-            'Укажите корректную дату',
-            reply_markup=calendar.create_calendar(
-                name=calendar_1_callback.prefix, year=now.year, month=now.month
-            ))
-
+        input_correct_date(
+            call=call, bot=bot, now=now, calendar_callback=calendar_1_callback
+        )
     elif action == 'CANCEL':
         bot.send_message(call.from_user.id, STOP_MESSAGE)
 
@@ -89,20 +84,14 @@ def finish(call: CallbackQuery) -> None:
     now = datetime.datetime.now()
     data_user = Action(message=call, bot=bot).data_user
     if action == 'DAY':
-
         if date.date() > data_user.date_in:
             data_user.date_out = date
             data_user.save(update_fields=['date_out'])
             Action(call, bot).get_hotels(call)
             return
-
-        bot.send_message(
-            call.from_user.id,
-            'Укажите корректную дату',
-            reply_markup=calendar.create_calendar(
-                name=calendar_2_callback.prefix, year=now.year, month=now.month
-            ))
-
+        input_correct_date(
+            call=call, bot=bot, calendar_callback=calendar_2_callback, now=now
+        )
     elif action == 'CANCEL':
         bot.send_message(call.from_user.id, STOP_MESSAGE)
 
@@ -120,4 +109,7 @@ class Command(BaseCommand):
     help = 'Запуск бота'
 
     def handle(self, *args, **options):
+        self.stdout.write(self.style.HTTP_SERVER_ERROR(
+            f'Бот запущен в {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
+        )
         bot.polling(none_stop=True, interval=0)
