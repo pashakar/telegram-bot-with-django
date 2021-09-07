@@ -2,6 +2,8 @@ from django.core.management.base import BaseCommand
 import datetime
 
 import telebot
+from django.http import HttpResponse
+from django.views.decorators.csrf import csrf_exempt
 from telebot.types import Message, CallbackQuery
 from django.conf import settings
 
@@ -12,15 +14,35 @@ from app_bot.utils.action import Action, calendar, calendar_1_callback, calendar
 TOKEN = settings.TOKEN
 MAIN_COMMANDS = ['/bestdeal', '/lowprice', '/highprice']
 
+CONTENT_TYPES = ['audio', 'photo', 'voice', 'video', 'document',
+                 'text', 'location', 'contact', 'sticker']
+
 HELP_COMMANDS = ['/hello-world', '/start', '/help']
 
-bot = telebot.TeleBot(token=TOKEN)
+bot = telebot.TeleBot(token=TOKEN, threaded=False)
+
+
+@csrf_exempt
+def bot_view(request):
+    if request.method != 'POST':
+        return HttpResponse(status=403)
+    if request.META.get('CONTENT_TYPE') != 'application/json':
+        return HttpResponse(status=403)
+
+    json_string = request.body.decode('utf-8')
+    update = telebot.types.Update.de_json(json_string)
+    bot.process_new_updates([update])
+
+    return HttpResponse(status=200)
 
 
 @bot.message_handler(commands=['hello-world', 'start', 'help'])
 def hello_world(message: Message) -> None:
     if message.text in HELP_COMMANDS[:2]:
-        next_message = "Приветствую, {0}. Выберете одну из следующих команд: {1}, {2}, {3}. Справка по командам - {4}"
+        next_message = "Приветствую, {0}.\n" \
+                       "Выберете одну из следующих команд:\n" \
+                       "{1}, {2}, {3}.\n" \
+                       "Справка по командам - {4}"
         bot.send_message(
             message.chat.id,
             next_message.format(message.from_user.first_name, *MAIN_COMMANDS, HELP_COMMANDS[-1])
@@ -94,10 +116,6 @@ def finish(call: CallbackQuery) -> None:
         )
     elif action == 'CANCEL':
         bot.send_message(call.from_user.id, STOP_MESSAGE)
-
-
-CONTENT_TYPES = ['audio', 'photo', 'voice', 'video', 'document',
-                 'text', 'location', 'contact', 'sticker']
 
 
 @bot.message_handler(content_types=CONTENT_TYPES)

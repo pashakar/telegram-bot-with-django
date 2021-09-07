@@ -5,7 +5,7 @@ from telebot.types import Message, ReplyKeyboardMarkup, KeyboardButton, Callback
 from telebot_calendar import Calendar, CallbackData, RUSSIAN_LANGUAGE
 from telebot import TeleBot
 
-from app_bot.utils.get_any_data import get_cities, get_destination_id, hotels
+from app_bot.utils.get_any_data import get_cities, get_destination_id, hotels, log_errors
 
 calendar = Calendar(language=RUSSIAN_LANGUAGE)
 calendar_1_callback = CallbackData("calendar_1", "action", "year", "month", "day")
@@ -20,6 +20,8 @@ class Action:
         self.bot = bot
         self.data_user = DataUser.objects.get(pk=message.from_user.id)
 
+
+    @log_errors
     def get_list_cities(self, message: Message, **kwargs) -> None:
         """
         Получение списка городов
@@ -46,6 +48,7 @@ class Action:
         city = self.bot.send_message(message.chat.id, 'Уточните город', reply_markup=rmk)
         self.bot.register_next_step_handler(city, self.get_city_by_destination_id)
 
+    @log_errors
     def get_city_by_destination_id(self, message: Message) -> None:
         """
         Получение конкретного города
@@ -74,6 +77,7 @@ class Action:
             return
         self.bot.register_next_step_handler(count_hotels, self.get_date_in)
 
+    @log_errors
     def get_date_in(self, message: Message) -> None:
         """
         Получение даты заезда
@@ -99,6 +103,7 @@ class Action:
             self.data_user.save(update_fields=['count_hotels'])
         self.send_calendar(message=message)
 
+    @log_errors
     def send_calendar(self, message) -> None:
         now = datetime.datetime.now()
         self.bot.send_message(
@@ -108,6 +113,7 @@ class Action:
                 name=calendar_1_callback.prefix, year=now.year, month=now.month
             ))
 
+    @log_errors
     def get_hotels(self, call: CallbackQuery, ) -> None:
         """
         Выдача юзеру отелей
@@ -144,6 +150,7 @@ class Action:
                 'Цена 💵 - {4}'.format(*hotel)
             )
 
+    @log_errors
     def get_price(self, message: Message) -> None:
         """
         Получение диапазона цен
@@ -165,6 +172,7 @@ class Action:
         )
         self.bot.register_next_step_handler(price, self.get_distance)
 
+    @log_errors
     def get_distance(self, message: Message) -> None:
         """
         Получение расстояния от центра

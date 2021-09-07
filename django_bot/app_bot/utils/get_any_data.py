@@ -9,6 +9,19 @@ HEADERS = settings.HEADERS
 logger = logging.getLogger(__name__)
 
 
+def log_errors(func):
+
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as exc:
+            logger.error(f'ERROR: {exc}')
+            raise exc
+
+    return wrapper
+
+
+@log_errors
 def get_cities(city: str) -> list or None:
     """
     Функция получения списка возможных городов
@@ -21,6 +34,7 @@ def get_cities(city: str) -> list or None:
     return cities if cities else None
 
 
+@log_errors
 def get_destination_id(city: str):
     """
     Функция для получения id города
@@ -32,6 +46,7 @@ def get_destination_id(city: str):
     return destination_id
 
 
+@log_errors
 def hotels(destination_id: str, page_size: str, sort_order: str, date_in, date_out,
            distance_from_centr=None, price_min=None, price_max=None) -> list or str:
     """
@@ -79,6 +94,7 @@ def hotels(destination_id: str, page_size: str, sort_order: str, date_in, date_o
     return h
 
 
+@log_errors
 def get_properties(el: dict, distance: str) -> list:
     properties = [
         el.get('name'), el.get('starRating', 0), el.get('address').get('streetAddress'), distance,
@@ -88,6 +104,7 @@ def get_properties(el: dict, distance: str) -> list:
     return properties
 
 
+@log_errors
 def prepare(city: str):
     """
     Функция для подготовки поиска
